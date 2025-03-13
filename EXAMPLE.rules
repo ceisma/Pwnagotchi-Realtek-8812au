@@ -1,0 +1,2 @@
+ACTION=="add", SUBSYSTEM=="net", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="8812", RUN+="/home/pi/scripts/plug-script.sh"
+ACTION=="remove", ENV{DEVPATH}=="/devices/platform/soc/3f980000.usb/usb1/1-1", RUN+="/home/pi/scripts/unplug-script.sh"
