@@ -1,36 +1,52 @@
 #!/bin/bash
-# Installer for plug-script.sh and unplug-script.sh and setting up udev rules
+# install-service.sh: Prepares a one-time systemd service for sys-setup.sh.
+# Must be run as root.
 
-# Ensure the script is run as root.
 if [ "$EUID" -ne 0 ]; then
-  echo "Error: This script must be run as root. Please run with sudo or as root."
+  echo "Error: Please run this script as root (e.g., using sudo)."
   exit 1
 fi
 
-# Prompt user for installation directory, defaulting to /home/pi/scripts
+# Prompt for installation directory; default is /home/pi/scripts
 read -p "Enter installation directory [/home/pi/scripts]: " install_dir
 install_dir=${install_dir:-/home/pi/scripts}
 
-# Create the target directory if it doesn't exist.
-mkdir -p "$install_dir"
-
-# Determine the installer root (directory where this script is located)
+# Determine installer root (the directory where this script is located)
 installer_root="$(cd "$(dirname "$0")" && pwd)"
 
-# Copy the scripts from the installer root's 'scripts' directory
-cp "$installer_root/scripts/plug-script.sh" "$install_dir"
-cp "$installer_root/scripts/unplug-script.sh" "$install_dir"
+# Save the chosen installation directory so sys-setup.sh can use it
+echo "$install_dir" > "$installer_root/install_dir.conf"
 
-# Make sure the scripts are executable
-chmod +x "$install_dir/plug-script.sh" "$install_dir/unplug-script.sh"
+# Create a one-time systemd service unit file
+service_file="/etc/systemd/system/one-time-installer.service"
+cat > "$service_file" <<EOF
+[Unit]
+Description=One-Time System Setup Service
+After=network.target
 
-# Create udev rule file using the provided installation directory path
-rule_file="/etc/udev/rules.d/70-usb-wifi-dongle.rules"
-cat > "$rule_file" <<EOF
-ACTION=="add", SUBSYSTEM=="net", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="8812", RUN+="$install_dir/plug-script.sh"
-ACTION=="remove", ENV{DEVPATH}=="/devices/platform/soc/3f980000.usb/usb1/1-1", RUN+="$install_dir/unplug-script.sh"
+[Service]
+Type=oneshot
+ExecStart=$installer_root/sys-setup.sh $install_dir
+
+[Install]
+WantedBy=multi-user.target
 EOF
 
-echo "Installation complete."
-echo "Scripts installed in: $install_dir"
-echo "udev rules file created at: $rule_file"
+echo "IMPORTANT:"
+echo "  1. Your Pwnagotchi will reboot now! To have a successful installation, plug in your USB Realtek (RTL8812AU) adapter during reboot."
+echo "  2. After the second reboot, you MUST remove the adapter otherwise your system might crash."
+echo "  3. ALWAYS plug in your adapter AFTER your Pwnagotchi booted up. Otherwise it will not work."
+read -p "Press Y to proceed with installation and reboot: " confirm
+if [[ "$confirm" != "Y" && "$confirm" != "y" ]]; then
+  echo "Installation aborted."
+  exit 1
+fi
+
+# Enable the one-time service
+systemctl enable one-time-installer.service
+
+echo "Installation will proceed in 10 seconds. Please prepare accordingly."
+sleep 10
+
+echo "Rebooting now..."
+reboot
