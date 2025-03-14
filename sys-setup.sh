@@ -12,7 +12,7 @@ install_dir="$1"
 
 installer_root="$(cd "$(dirname "$0")" && pwd)"
 error_log="$installer_root/error.log"
-success_log="$installer_root/success.txt"
+success_log="$installer_root/success.log"
 
 {
   echo "===== sys-setup.sh started at $(date) ====="
@@ -84,7 +84,7 @@ EOF
   echo "===== sys-setup.sh completed successfully at $(date) ====="
 } >> "$success_log" 2>> "$error_log"
 
-logger "sys-setup.sh completed. Rebooting in 4 seconds."
+logger "Installation completed. Rebooting in 3 seconds."
 
-sleep 4
+sleep 3
 reboot
